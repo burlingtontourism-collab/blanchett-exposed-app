@@ -160,3 +160,18 @@ if (notifyButton) {
       'Browser support is available, but push is not configured yet. A push server and VAPID public key must be connected before subscriptions and automatic alerts can work.';
   });
 }
+
+
+const backToTop = document.querySelector('#backToTop');
+if (backToTop) {
+  const updateBackToTop = () => {
+    backToTop.classList.toggle('is-visible', window.scrollY > 300);
+  };
+  window.addEventListener('scroll', updateBackToTop, { passive: true });
+  updateBackToTop();
+  backToTop.addEventListener('click', (event) => {
+    event.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  });
+}
