@@ -1,11 +1,15 @@
-const API_ENDPOINTS = [
-  'https://public-api.wordpress.com/rest/v1.1/sites/blanchetexposed.wordpress.com/posts/?number=9',
-  'https://blanchetexposed.wordpress.com/wp-json/wp/v2/posts?per_page=9&_fields=date,link,title,excerpt'
-];
-
+const PAGE_SIZE = 9;
+const WORDPRESS_API = 'https://public-api.wordpress.com/rest/v1.1/sites/blanchetexposed.wordpress.com/posts/';
+const WP_REST_API = 'https://blanchetexposed.wordpress.com/wp-json/wp/v2/posts';
 const articles = document.querySelector('#articles');
 const status = document.querySelector('#status');
+const loadMoreButton = document.querySelector('#loadMore');
+const archiveStatus = document.querySelector('#archiveStatus');
 const BLOG_URL = 'https://blanchetexposed.wordpress.com/';
+let currentPage = 1;
+let loading = false;
+let finished = false;
+let seenLinks = new Set();
 
 const plain = (value) => {
   const doc = new DOMParser().parseFromString(value || '', 'text/html');
@@ -21,157 +25,145 @@ function normalizePost(post) {
   };
 }
 
-async function getPosts() {
+async function fetchPage(page) {
+  const endpoints = [
+    WORDPRESS_API + '?number=' + PAGE_SIZE + '&page=' + page,
+    WP_REST_API + '?per_page=' + PAGE_SIZE + '&page=' + page + '&_fields=date,link,title,excerpt'
+  ];
   const errors = [];
-
-  for (const endpoint of API_ENDPOINTS) {
+  for (const endpoint of endpoints) {
     try {
       const response = await fetch(endpoint, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         cache: 'no-store'
       });
-
       if (!response.ok) throw new Error('HTTP ' + response.status);
-
       const data = await response.json();
       const records = Array.isArray(data) ? data : data.posts;
-
       if (!Array.isArray(records)) throw new Error('Unexpected response format');
-
-      const posts = records.map(normalizePost).filter(post => post.title && post.link);
-      if (!posts.length) throw new Error('No published posts returned');
-
-      return posts;
+      return records.map(normalizePost).filter(post => post.title && post.link);
     } catch (error) {
       errors.push(error.message || String(error));
-      console.warn('WordPress feed endpoint failed:', endpoint, error);
+      console.warn('WordPress archive endpoint failed:', endpoint, error);
     }
   }
-
-  throw new Error(errors.join('; ') || 'No WordPress feed endpoint responded');
+  throw new Error(errors.join('; ') || 'No WordPress archive endpoint responded');
 }
 
-function showBlogFallback(message) {
-  articles.replaceChildren();
-  status.replaceChildren(document.createTextNode(message + ' '));
-  const link = document.createElement('a');
-  link.href = BLOG_URL;
-  link.textContent = 'Open Blanchett Exposed on WordPress';
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  status.append(link);
+function makeCard(post) {
+  const article = document.createElement('a');
+  article.className = 'article';
+  article.href = post.link;
+  article.target = '_blank';
+  article.rel = 'noopener noreferrer';
+
+  const date = document.createElement('span');
+  date.className = 'date';
+  if (post.date) {
+    const parsedDate = new Date(post.date);
+    date.textContent = Number.isNaN(parsedDate.getTime()) ? '' :
+      new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(parsedDate);
+  }
+  const heading = document.createElement('h3');
+  heading.textContent = plain(post.title);
+  const excerpt = document.createElement('p');
+  excerpt.className = 'excerpt';
+  excerpt.textContent = plain(post.excerpt).slice(0, 150);
+  const read = document.createElement('span');
+  read.className = 'read';
+  read.textContent = 'Read investigation ↗';
+  article.append(date, heading, excerpt, read);
+  return article;
 }
 
-async function loadArticles() {
-  status.textContent = 'Loading recent articles…';
+function updateArchiveControls() {
+  if (!loadMoreButton) return;
+  loadMoreButton.hidden = finished;
+  loadMoreButton.disabled = loading;
+  loadMoreButton.textContent = loading ? 'Loading…' : 'Load older investigations';
+}
+
+async function loadPage(page, append) {
+  if (loading || finished) return;
+  loading = true;
+  updateArchiveControls();
+  if (archiveStatus) archiveStatus.textContent = append ? 'Loading older investigations…' : '';
+  if (!append) status.textContent = 'Loading recent articles…';
 
   try {
-    const posts = await getPosts();
+    const posts = await fetchPage(page);
+    const freshPosts = posts.filter(post => !seenLinks.has(post.link));
+    freshPosts.forEach(post => seenLinks.add(post.link));
+    if (!append) articles.replaceChildren();
+    articles.append(...freshPosts.map(makeCard));
+    currentPage = page;
 
-    articles.replaceChildren(
-      ...posts.map((post) => {
-        const article = document.createElement('a');
-        article.className = 'article';
-        article.href = post.link;
-        article.target = '_blank';
-        article.rel = 'noopener noreferrer';
-
-        const date = document.createElement('span');
-        date.className = 'date';
-        if (post.date) {
-          const parsedDate = new Date(post.date);
-          date.textContent = Number.isNaN(parsedDate.getTime())
-            ? ''
-            : new Intl.DateTimeFormat('en-GB', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-              }).format(parsedDate);
-        }
-
-        const heading = document.createElement('h3');
-        heading.textContent = plain(post.title);
-
-        const excerpt = document.createElement('p');
-        excerpt.className = 'excerpt';
-        excerpt.textContent = plain(post.excerpt).slice(0, 150);
-
-        const read = document.createElement('span');
-        read.className = 'read';
-        read.textContent = 'Read investigation ↗';
-
-        article.append(date, heading, excerpt, read);
-        return article;
-      })
-    );
-
+    if (posts.length < PAGE_SIZE || freshPosts.length === 0) {
+      finished = true;
+      if (archiveStatus) archiveStatus.textContent = 'You’re viewing all posts available through the public feed.';
+    } else if (archiveStatus) {
+      archiveStatus.textContent = freshPosts.length ? '' : 'No additional posts were found.';
+    }
     status.textContent = 'Recent posts from Blanchett Exposed.';
   } catch (error) {
-    console.error('Could not load WordPress posts from either feed:', error);
-    showBlogFallback('Recent articles could not load automatically.');
+    console.error('Could not load WordPress archive:', error);
+    if (!append) {
+      status.replaceChildren(document.createTextNode('Recent articles could not load automatically. '));
+      const link = document.createElement('a');
+      link.href = BLOG_URL;
+      link.textContent = 'Open Blanchett Exposed on WordPress';
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      status.append(link);
+    } else if (archiveStatus) {
+      archiveStatus.textContent = 'Could not load older posts just now. Please try again.';
+    }
+  } finally {
+    loading = false;
+    updateArchiveControls();
   }
 }
 
-loadArticles();
+if (loadMoreButton) loadMoreButton.addEventListener('click', () => loadPage(currentPage + 1, true));
+loadPage(1, false);
 
 const dismissButton = document.querySelector('#dismiss');
-if (dismissButton) {
-  dismissButton.addEventListener('click', () => {
-    const installHelp = document.querySelector('#installHelp');
-    if (installHelp) installHelp.hidden = true;
-  });
-}
+if (dismissButton) dismissButton.addEventListener('click', () => {
+  const installHelp = document.querySelector('#installHelp');
+  if (installHelp) installHelp.hidden = true;
+});
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(console.warn);
-  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.warn));
 }
 
 const notifyButton = document.querySelector('#notify');
-if (notifyButton) {
-  notifyButton.addEventListener('click', () => {
-    const output = document.querySelector('#notifyStatus');
-    if (!output) return;
-
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isInstalled =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      navigator.standalone === true;
-
-    if (
-      !('Notification' in window) ||
-      !('serviceWorker' in navigator) ||
-      !('PushManager' in window)
-    ) {
-      output.textContent =
-        'This browser does not support web push here. You can still follow the blog or subscribe by email.';
-      return;
-    }
-
-    if (isIOS && !isInstalled) {
-      output.textContent =
-        'On iPhone, first open this site in Safari and choose Share → Add to Home Screen. Then open the installed app.';
-      return;
-    }
-
-    output.textContent =
-      'Browser support is available, but push is not configured yet. A push server and VAPID public key must be connected before subscriptions and automatic alerts can work.';
-  });
-}
-
+if (notifyButton) notifyButton.addEventListener('click', () => {
+  const output = document.querySelector('#notifyStatus');
+  if (!output) return;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    output.textContent = 'This browser does not support web push here. You can still follow the blog or subscribe by email.';
+    return;
+  }
+  if (isIOS && !isInstalled) {
+    output.textContent = 'On iPhone, first open this site in Safari and choose Share → Add to Home Screen. Then open the installed app.';
+    return;
+  }
+  output.textContent = 'Browser support is available, but push is not configured yet. A push server and VAPID public key must be connected before subscriptions and automatic alerts can work.';
+});
 
 const backToTop = document.querySelector('#backToTop');
 if (backToTop) {
   const updateBackToTop = () => {
-    const isAtArticleSection = window.location.hash === '#articles';
-    backToTop.classList.toggle('is-visible', window.scrollY > 300 || isAtArticleSection);
+    backToTop.classList.toggle('is-visible', window.scrollY > 300 || window.location.hash === '#articles');
   };
   window.addEventListener('scroll', updateBackToTop, { passive: true });
   window.addEventListener('hashchange', updateBackToTop);
   updateBackToTop();
-  backToTop.addEventListener('click', (event) => {
+  backToTop.addEventListener('click', event => {
     event.preventDefault();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     history.replaceState(null, '', window.location.pathname + window.location.search);
