@@ -165,9 +165,11 @@ if (notifyButton) {
 const backToTop = document.querySelector('#backToTop');
 if (backToTop) {
   const updateBackToTop = () => {
-    backToTop.classList.toggle('is-visible', window.scrollY > 300);
+    const isAtArticleSection = window.location.hash === '#articles';
+    backToTop.classList.toggle('is-visible', window.scrollY > 300 || isAtArticleSection);
   };
   window.addEventListener('scroll', updateBackToTop, { passive: true });
+  window.addEventListener('hashchange', updateBackToTop);
   updateBackToTop();
   backToTop.addEventListener('click', (event) => {
     event.preventDefault();
