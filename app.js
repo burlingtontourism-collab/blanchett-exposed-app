@@ -1,5 +1,5 @@
 
-const API = 'https://public-api.wordpress.com/wp/v2/sites/blanchetexposed.wordpress.com/posts?per_page=9&_fields=date,link,title,excerpt';
+const API = 'https://blanchetexposed.wordpress.com/wp-json/wp/v2/posts?per_page=9&_fields=date,link,title,excerpt';
 
 const articles = document.querySelector('#articles');
 const status = document.querySelector('#status');
