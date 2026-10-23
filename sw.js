@@ -1,4 +1,4 @@
-const CACHE='be-pwa-v10';
+const CACHE='be-pwa-v11';
 const FILES=['./','./index.html','./styles.css','./app.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
 
 self.addEventListener('install', event => {
