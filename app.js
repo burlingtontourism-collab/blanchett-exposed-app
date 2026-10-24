@@ -255,12 +255,22 @@ if (notifyButton && notifyOutput) {
     }
     try {
       await oneSignalInstance.Notifications.requestPermission();
-      notifyOutput.textContent = oneSignalInstance.Notifications.permission
-        ? 'Notifications are enabled for this device. We will test automatic article alerts once the OneSignal setup is complete.'
-        : 'Notifications were not enabled. You can allow them in your browser settings and try again.';
+      if (!oneSignalInstance.Notifications.permission) {
+        notifyOutput.textContent = 'Browser permission was not granted. Allow notifications for this site in Chrome settings, then try again.';
+        return;
+      }
+      await oneSignalInstance.User.PushSubscription.optIn();
+      const pushSubscription = oneSignalInstance.User.PushSubscription;
+      const subscriptionId = pushSubscription.id;
+      const optedIn = pushSubscription.optedIn;
+      if (optedIn && subscriptionId) {
+        notifyOutput.textContent = 'This device is subscribed to OneSignal notifications. Subscription ID: ' + subscriptionId + '. Next we need to send a test notification from OneSignal.';
+      } else {
+        notifyOutput.textContent = 'Chrome permission is granted, but OneSignal has not confirmed a push subscription yet. Status: optedIn=' + String(optedIn) + ', subscription ID=' + String(subscriptionId) + '. Please wait a few seconds and press Enable notifications again.';
+      }
     } catch (error) {
-      console.error('Could not request notification permission:', error);
-      notifyOutput.textContent = 'Could not enable notifications. Check this site’s notification permission in your browser settings.';
+      console.error('Could not subscribe this device to OneSignal:', error);
+      notifyOutput.textContent = 'OneSignal subscription error: ' + (error && (error.message || String(error)) || 'Unknown error') + '. Please send this message to the site maintainer.';
     }
   });
 }
