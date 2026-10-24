@@ -28,7 +28,7 @@ jobs:
       - name: Check WordPress feed and notify subscribers
         env:
           ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
-          TEST_NOTIFICATION: ${{ inputs.test_notification }}
+          TEST_NOTIFICATION: ${{ github.event_name == 'workflow_dispatch' && inputs.test_notification == true }}
         run: |
           python - <<'PY'
           import json, os, pathlib, urllib.request, urllib.error, subprocess, sys
