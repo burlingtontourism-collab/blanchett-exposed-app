@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch:
+    inputs:
+      test_notification:
+        description: "Send a test push notification to subscribed devices"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,6 +28,7 @@ jobs:
       - name: Check WordPress feed and notify subscribers
         env:
           ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+          TEST_NOTIFICATION: ${{ inputs.test_notification }}
         run: |
           python - <<'PY'
           import json, os, pathlib, urllib.request, urllib.error, subprocess, sys
@@ -48,6 +55,39 @@ jobs:
           if not post_id:
               print("Latest post has no ID; refusing to send.")
               sys.exit(1)
+
+          app_id = "326ce20f-b4a3-47fb-8b80-dc878f7a3fd9"
+          api_key = os.environ.get("ONESIGNAL_REST_API_KEY", "").strip()
+          test_notification = os.environ.get("TEST_NOTIFICATION", "false").lower() == "true"
+
+          if test_notification:
+              if not api_key:
+                  print("Missing GitHub Actions secret ONESIGNAL_REST_API_KEY.")
+                  sys.exit(1)
+              payload = {
+                  "app_id": app_id,
+                  "included_segments": ["Subscribed Users"],
+                  "headings": {"en": "Blanchett Exposed"},
+                  "contents": {"en": "Test notification: push setup check."},
+                  "url": "https://blanchetexposed.wordpress.com/"
+              }
+              req = urllib.request.Request(
+                  "https://api.onesignal.com/notifications",
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers={
+                      "Content-Type": "application/json; charset=utf-8",
+                      "Authorization": "Key " + api_key
+                  },
+                  method="POST"
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=25) as response:
+                      result = json.load(response)
+                      print("OneSignal test notification response:", json.dumps(result))
+              except urllib.error.HTTPError as exc:
+                  print("OneSignal rejected test notification:", exc.code, exc.read().decode("utf-8", "replace"))
+                  sys.exit(1)
+              sys.exit(0)
 
           state_path.parent.mkdir(parents=True, exist_ok=True)
           previous = None
