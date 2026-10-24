@@ -188,21 +188,55 @@ if ('serviceWorker' in navigator) {
 }
 
 const notifyButton = document.querySelector('#notify');
-if (notifyButton) notifyButton.addEventListener('click', () => {
-  const output = document.querySelector('#notifyStatus');
-  if (!output) return;
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-    output.textContent = 'This browser does not support web push here. You can still follow the blog or subscribe by email.';
-    return;
-  }
-  if (isIOS && !isInstalled) {
-    output.textContent = 'On iPhone, first open this site in Safari and choose Share → Add to Home Screen. Then open the installed app.';
-    return;
-  }
-  output.textContent = 'Browser support is available, but push is not configured yet. A push server and VAPID public key must be connected before subscriptions and automatic alerts can work.';
-});
+const notifyOutput = document.querySelector('#notifyStatus');
+let oneSignalReady = false;
+let oneSignalInstance = null;
+
+if (notifyButton && notifyOutput) {
+  notifyButton.textContent = 'Enable notifications';
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async function (OneSignal) {
+    try {
+      await OneSignal.init({
+        appId: 'bba33bf0-eead-466f-90ab-ff4304e17a84',
+        serviceWorkerPath: '/blanchett-exposed-app/onesignal/OneSignalSDKWorker.js',
+        serviceWorkerParam: { scope: '/blanchett-exposed-app/onesignal/' }
+      });
+      oneSignalInstance = OneSignal;
+      oneSignalReady = true;
+      notifyOutput.textContent = 'Ready to enable push notifications on this device.';
+    } catch (error) {
+      console.error('OneSignal initialization failed:', error);
+      notifyOutput.textContent = 'Notifications could not initialize yet. Please try again later.';
+    }
+  });
+
+  notifyButton.addEventListener('click', async () => {
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      notifyOutput.textContent = 'This browser does not support web push here. You can still read the blog on WordPress.';
+      return;
+    }
+    if (isIOS && !isInstalled) {
+      notifyOutput.textContent = 'On iPhone, first open this site in Safari and choose Share → Add to Home Screen. Then open the installed app.';
+      return;
+    }
+    if (!oneSignalReady || !oneSignalInstance) {
+      notifyOutput.textContent = 'The notification service is still loading. Please wait a moment and try again.';
+      return;
+    }
+    try {
+      await oneSignalInstance.Notifications.requestPermission();
+      notifyOutput.textContent = oneSignalInstance.Notifications.permission
+        ? 'Notifications are enabled for this device. Automatic new-article alerts still need to be connected.'
+        : 'Notifications were not enabled. You can allow them in your browser settings and try again.';
+    } catch (error) {
+      console.error('Could not request notification permission:', error);
+      notifyOutput.textContent = 'Could not enable notifications. Check this site’s notification permission in your browser settings.';
+    }
+  });
+}
 
 const backToTop = document.querySelector('#backToTop');
 if (backToTop) {
