@@ -21,7 +21,6 @@ jobs:
 
       - name: Check WordPress feed and notify subscribers
         env:
-          ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
           ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
         run: |
           python - <<'PY'
@@ -64,7 +63,7 @@ jobs:
               subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
               subprocess.run(["git", "add", str(state_path)], check=True)
               subprocess.run(["git", "commit", "-m", "Initialize latest WordPress post marker"], check=False)
-              subprocess.run(["git", "push"], check=True)
+              subprocess.run(["git", "push", "origin", "HEAD:main"], check=True)
               print(f"Initialized marker at post {post_id}; no notification sent.")
               sys.exit(0)
 
@@ -72,10 +71,10 @@ jobs:
               print("No new WordPress article.")
               sys.exit(0)
 
-          app_id = os.environ.get("ONESIGNAL_APP_ID", "").strip()
+          app_id = "bba33bf0-eead-466f-90ab-ff4304e17a84"
           api_key = os.environ.get("ONESIGNAL_REST_API_KEY", "").strip()
-          if not app_id or not api_key:
-              print("Missing GitHub Actions variable ONESIGNAL_APP_ID or secret ONESIGNAL_REST_API_KEY.")
+          if not api_key:
+              print("Missing GitHub Actions secret ONESIGNAL_REST_API_KEY.")
               sys.exit(1)
 
           payload = {
