@@ -9,7 +9,7 @@ on:
         description: "Send a test push notification to subscribed devices"
         required: true
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write
