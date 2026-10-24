@@ -207,7 +207,8 @@ if (notifyButton && notifyOutput) {
       notifyOutput.textContent = 'Ready to enable push notifications on this device.';
     } catch (error) {
       console.error('OneSignal initialization failed:', error);
-      notifyOutput.textContent = 'Notifications could not initialize. Please refresh this page and try again. If it continues, the site setup needs further fixing.';
+      const detail = error && (error.message || String(error));
+      notifyOutput.textContent = 'Notification setup error: ' + (detail || 'No error details were provided.') + ' Please send this message to the site maintainer.';
     }
   });
 
