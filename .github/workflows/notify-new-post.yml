@@ -1,10 +1,6 @@
 name: Notify subscribers about new WordPress articles
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/notify-new-post.yml'
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
@@ -26,8 +22,7 @@ jobs:
       - name: Check WordPress feed and notify subscribers
         env:
           ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
-          TEST_NOTIFICATION: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.head_commit.message == 'Diagnose mobile notification delivery') }}
-          MOBILE_TARGETED_TEST: ${{ github.event_name == 'push' && github.event.head_commit.message == 'Diagnose mobile notification delivery' }}
+          TEST_NOTIFICATION: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           python - <<'PY'
           import json, os, pathlib, urllib.request, urllib.error, subprocess, sys
@@ -66,16 +61,11 @@ jobs:
               payload = {
                   "app_id": app_id,
                   "target_channel": "push",
+                  "included_segments": ["All"],
                   "headings": {"en": "Blanchett Exposed"},
-                  "contents": {"en": "Mobile-only delivery test from Blanchett Exposed."},
+                  "contents": {"en": "Test notification: push setup check."},
                   "url": "https://blanchetexposed.wordpress.com/"
               }
-              if os.environ.get("MOBILE_TARGETED_TEST", "false").lower() == "true":
-                  payload["include_subscription_ids"] = ["2f90f106-b976-436d-803e-01543bb7f022"]
-                  print("Mobile diagnostic: targeting only the specified mobile subscription.")
-              else:
-                  payload["included_segments"] = ["All"]
-                  print("General diagnostic: targeting all subscribed devices.")
               req = urllib.request.Request(
                   "https://api.onesignal.com/notifications",
                   data=json.dumps(payload).encode("utf-8"),
