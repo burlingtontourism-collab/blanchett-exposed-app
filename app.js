@@ -5,15 +5,19 @@ const articles = document.querySelector('#articles');
 const status = document.querySelector('#status');
 const loadMoreButton = document.querySelector('#loadMore');
 const archiveStatus = document.querySelector('#archiveStatus');
+const searchForm = document.querySelector('#articleSearch');
+const searchInput = document.querySelector('#searchInput');
+const clearSearchButton = document.querySelector('#clearSearch');
 const BLOG_URL = 'https://blanchetexposed.wordpress.com/';
 let currentPage = 1;
 let loading = false;
 let finished = false;
+let activeQuery = '';
 let seenLinks = new Set();
 
 const plain = (value) => {
   const doc = new DOMParser().parseFromString(value || '', 'text/html');
-  return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+  return (doc.body.textContent || '').replace(/\\s+/g, ' ').trim();
 };
 
 function normalizePost(post) {
@@ -25,10 +29,12 @@ function normalizePost(post) {
   };
 }
 
-async function fetchPage(page) {
+async function fetchPage(page, query = '') {
+  const search = query ? '&search=' + encodeURIComponent(query) : '';
   const endpoints = [
-    WORDPRESS_API + '?number=' + PAGE_SIZE + '&page=' + page,
-    WP_REST_API + '?per_page=' + PAGE_SIZE + '&page=' + page + '&_fields=date,link,title,excerpt'
+    WORDPRESS_API + '?number=' + PAGE_SIZE + '&page=' + page + search,
+    WP_REST_API + '?per_page=' + PAGE_SIZE + '&page=' + page + '&_fields=date,link,title,excerpt' +
+      (query ? '&search=' + encodeURIComponent(query) : '')
   ];
   const errors = [];
   for (const endpoint of endpoints) {
@@ -81,35 +87,54 @@ function updateArchiveControls() {
   if (!loadMoreButton) return;
   loadMoreButton.hidden = finished;
   loadMoreButton.disabled = loading;
-  loadMoreButton.textContent = loading ? 'Loading…' : 'Load older investigations';
+  loadMoreButton.textContent = loading ? 'Loading…' :
+    (activeQuery ? 'Load more search results' : 'Load older investigations');
+  if (clearSearchButton) clearSearchButton.hidden = !activeQuery;
 }
 
-async function loadPage(page, append) {
-  if (loading || finished) return;
+async function loadPage(page, append = false) {
+  if (loading || (finished && append)) return;
   loading = true;
   updateArchiveControls();
-  if (archiveStatus) archiveStatus.textContent = append ? 'Loading older investigations…' : '';
-  if (!append) status.textContent = 'Loading recent articles…';
+  if (archiveStatus) archiveStatus.textContent = append
+    ? (activeQuery ? 'Loading more search results…' : 'Loading older investigations…')
+    : '';
+  if (!append) status.textContent = activeQuery
+    ? 'Searching the published archive…'
+    : 'Loading recent articles…';
 
   try {
-    const posts = await fetchPage(page);
+    const posts = await fetchPage(page, activeQuery);
     const freshPosts = posts.filter(post => !seenLinks.has(post.link));
     freshPosts.forEach(post => seenLinks.add(post.link));
     if (!append) articles.replaceChildren();
     articles.append(...freshPosts.map(makeCard));
     currentPage = page;
 
-    if (posts.length < PAGE_SIZE || freshPosts.length === 0) {
-      finished = true;
-      if (archiveStatus) archiveStatus.textContent = 'You’re viewing all posts available through the public feed.';
-    } else if (archiveStatus) {
-      archiveStatus.textContent = freshPosts.length ? '' : 'No additional posts were found.';
+    if (!freshPosts.length && !append) {
+      status.textContent = activeQuery
+        ? 'No articles found for “' + activeQuery + '”. Try another keyword.'
+        : 'No articles are available right now.';
+    } else if (activeQuery) {
+      status.textContent = 'Search results for “' + activeQuery + '”.';
+    } else {
+      status.textContent = 'Recent posts from Blanchett Exposed.';
     }
-    status.textContent = 'Recent posts from Blanchett Exposed.';
+
+    finished = posts.length < PAGE_SIZE || (append && freshPosts.length === 0);
+    if (finished && archiveStatus) {
+      archiveStatus.textContent = activeQuery
+        ? 'You’ve reached the end of these search results.'
+        : 'You’re viewing all posts available through the public feed.';
+    } else if (archiveStatus) {
+      archiveStatus.textContent = '';
+    }
   } catch (error) {
     console.error('Could not load WordPress archive:', error);
     if (!append) {
-      status.replaceChildren(document.createTextNode('Recent articles could not load automatically. '));
+      status.replaceChildren(document.createTextNode(
+        activeQuery ? 'Search is temporarily unavailable. ' : 'Recent articles could not load automatically. '
+      ));
       const link = document.createElement('a');
       link.href = BLOG_URL;
       link.textContent = 'Open Blanchett Exposed on WordPress';
@@ -117,7 +142,7 @@ async function loadPage(page, append) {
       link.rel = 'noopener noreferrer';
       status.append(link);
     } else if (archiveStatus) {
-      archiveStatus.textContent = 'Could not load older posts just now. Please try again.';
+      archiveStatus.textContent = 'Could not load more posts just now. Please try again.';
     }
   } finally {
     loading = false;
@@ -125,6 +150,30 @@ async function loadPage(page, append) {
   }
 }
 
+function startSearch(query) {
+  activeQuery = query.trim();
+  currentPage = 1;
+  finished = false;
+  seenLinks = new Set();
+  if (archiveStatus) archiveStatus.textContent = '';
+  updateArchiveControls();
+  loadPage(1, false);
+  document.querySelector('#articles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+if (searchForm) {
+  searchForm.addEventListener('submit', event => {
+    event.preventDefault();
+    startSearch(searchInput.value);
+  });
+}
+if (clearSearchButton) {
+  clearSearchButton.addEventListener('click', () => {
+    searchInput.value = '';
+    startSearch('');
+    searchInput.focus();
+  });
+}
 if (loadMoreButton) loadMoreButton.addEventListener('click', () => loadPage(currentPage + 1, true));
 loadPage(1, false);
 
