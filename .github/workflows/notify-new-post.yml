@@ -67,7 +67,7 @@ jobs:
               payload = {
                   "app_id": app_id,
               "target_channel": "push",
-                  "included_segments": ["Subscribed Users"],
+                  "included_segments": ["Test Users"],
                   "headings": {"en": "Blanchett Exposed"},
                   "contents": {"en": "Test notification: push setup check."},
                   "url": "https://blanchetexposed.wordpress.com/"
@@ -85,6 +85,9 @@ jobs:
                   with urllib.request.urlopen(req, timeout=25) as response:
                       result = json.load(response)
                       print("OneSignal test notification response:", json.dumps(result))
+                      if not result.get("id"):
+                          print("OneSignal did not create a test notification; check recipient targeting and OneSignal errors.")
+                          sys.exit(1)
               except urllib.error.HTTPError as exc:
                   print("OneSignal rejected test notification:", exc.code, exc.read().decode("utf-8", "replace"))
                   sys.exit(1)
@@ -139,6 +142,9 @@ jobs:
               with urllib.request.urlopen(req, timeout=25) as response:
                   result = json.load(response)
                   print("OneSignal response:", json.dumps(result))
+                  if not result.get("id"):
+                      print("OneSignal did not create an article notification; check recipient targeting and OneSignal errors.")
+                      sys.exit(1)
           except urllib.error.HTTPError as exc:
               print("OneSignal rejected notification:", exc.code, exc.read().decode("utf-8", "replace"))
               sys.exit(1)
