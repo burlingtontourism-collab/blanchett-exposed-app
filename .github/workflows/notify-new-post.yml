@@ -67,7 +67,7 @@ jobs:
               payload = {
                   "app_id": app_id,
               "target_channel": "push",
-                  "include_subscription_ids": ["SUBSCRIPTION_ID_FROM_APP"],
+                  "included_segments": ["All"],
                   "headings": {"en": "Blanchett Exposed"},
                   "contents": {"en": "Test notification: push setup check."},
                   "url": "https://blanchetexposed.wordpress.com/"
