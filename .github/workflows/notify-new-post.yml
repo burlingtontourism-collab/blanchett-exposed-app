@@ -1,0 +1,111 @@
+name: Notify subscribers about new WordPress articles
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wordpress-new-post-notifications
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check WordPress feed and notify subscribers
+        env:
+          ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, urllib.request, urllib.error, subprocess, sys
+
+          state_path = pathlib.Path("automation/latest-post.json")
+          feed_url = "https://public-api.wordpress.com/rest/v1.1/sites/blanchetexposed.wordpress.com/posts/?number=1"
+          request = urllib.request.Request(feed_url, headers={"User-Agent": "BlanchettExposedPostNotifier/1.0"})
+          try:
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  feed = json.load(response)
+          except Exception as exc:
+              print(f"Could not read WordPress feed: {exc}")
+              sys.exit(1)
+
+          posts = feed.get("posts", [])
+          if not posts:
+              print("No public posts found; nothing to do.")
+              sys.exit(0)
+
+          post = posts[0]
+          post_id = str(post.get("ID", ""))
+          title = post.get("title", "A new investigation from Blanchett Exposed")
+          link = post.get("URL", "https://blanchetexposed.wordpress.com/")
+          if not post_id:
+              print("Latest post has no ID; refusing to send.")
+              sys.exit(1)
+
+          state_path.parent.mkdir(parents=True, exist_ok=True)
+          previous = None
+          if state_path.exists():
+              try:
+                  previous = json.loads(state_path.read_text()).get("latest_post_id")
+              except Exception:
+                  previous = None
+
+          if previous is None:
+              state_path.write_text(json.dumps({"latest_post_id": post_id}, indent=2) + "\n")
+              subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
+              subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
+              subprocess.run(["git", "add", str(state_path)], check=True)
+              subprocess.run(["git", "commit", "-m", "Initialize latest WordPress post marker"], check=False)
+              subprocess.run(["git", "push"], check=True)
+              print(f"Initialized marker at post {post_id}; no notification sent.")
+              sys.exit(0)
+
+          if str(previous) == post_id:
+              print("No new WordPress article.")
+              sys.exit(0)
+
+          app_id = os.environ.get("ONESIGNAL_APP_ID", "").strip()
+          api_key = os.environ.get("ONESIGNAL_REST_API_KEY", "").strip()
+          if not app_id or not api_key:
+              print("Missing GitHub Actions variable ONESIGNAL_APP_ID or secret ONESIGNAL_REST_API_KEY.")
+              sys.exit(1)
+
+          payload = {
+              "app_id": app_id,
+              "included_segments": ["Subscribed Users"],
+              "headings": {"en": "Blanchett Exposed"},
+              "contents": {"en": "New investigation: " + title},
+              "url": link
+          }
+          req = urllib.request.Request(
+              "https://api.onesignal.com/notifications",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Content-Type": "application/json; charset=utf-8",
+                  "Authorization": "Key " + api_key
+              },
+              method="POST"
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=25) as response:
+                  result = json.load(response)
+                  print("OneSignal response:", json.dumps(result))
+          except urllib.error.HTTPError as exc:
+              print("OneSignal rejected notification:", exc.code, exc.read().decode("utf-8", "replace"))
+              sys.exit(1)
+
+          state_path.write_text(json.dumps({"latest_post_id": post_id}, indent=2) + "\n")
+          subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
+          subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
+          subprocess.run(["git", "add", str(state_path)], check=True)
+          subprocess.run(["git", "commit", "-m", "Update latest WordPress post marker"], check=False)
+          subprocess.run(["git", "push"], check=True)
+          PY
