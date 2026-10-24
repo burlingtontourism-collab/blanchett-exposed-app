@@ -191,11 +191,14 @@ const notifyButton = document.querySelector('#notify');
 const notifyOutput = document.querySelector('#notifyStatus');
 let oneSignalReady = false;
 let oneSignalInstance = null;
+let oneSignalInitError = null;
+let oneSignalInitStarted = false;
 
 if (notifyButton && notifyOutput) {
   notifyButton.textContent = 'Enable notifications';
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.OneSignalDeferred.push(async function (OneSignal) {
+    oneSignalInitStarted = true;
     try {
       await OneSignal.init({
         appId: '326ce20f-b4a3-47fb-8b80-dc878f7a3fd9',
@@ -208,9 +211,22 @@ if (notifyButton && notifyOutput) {
     } catch (error) {
       console.error('OneSignal initialization failed:', error);
       const detail = error && (error.message || String(error));
-      notifyOutput.textContent = 'Notification setup error: ' + (detail || 'No error details were provided.') + ' Please send this message to the site maintainer.';
+      oneSignalInitError = detail || 'No error details were provided.';
+      notifyOutput.textContent = 'Notification setup error: ' + oneSignalInitError + ' Please send this message to the site maintainer.';
     }
   });
+
+  // If the external OneSignal SDK never calls the queued initializer, expose
+  // that condition instead of leaving the page stuck on "still loading".
+  window.setTimeout(() => {
+    if (!oneSignalReady && !oneSignalInitError && !oneSignalInitStarted) {
+      oneSignalInitError = 'The OneSignal browser SDK did not start. The script may be blocked or the site configuration may be incompatible.';
+      notifyOutput.textContent = 'Notification setup error: ' + oneSignalInitError;
+    } else if (!oneSignalReady && !oneSignalInitError && oneSignalInitStarted) {
+      oneSignalInitError = 'OneSignal initialization did not finish within 15 seconds. The service worker or site configuration may be failing.';
+      notifyOutput.textContent = 'Notification setup error: ' + oneSignalInitError;
+    }
+  }, 15000);
 
   notifyButton.addEventListener('click', async () => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -223,8 +239,14 @@ if (notifyButton && notifyOutput) {
       notifyOutput.textContent = 'On iPhone, first open this site in Safari and choose Share → Add to Home Screen. Then open the installed app.';
       return;
     }
+    if (oneSignalInitError) {
+      notifyOutput.textContent = 'Notification setup error: ' + oneSignalInitError;
+      return;
+    }
     if (!oneSignalReady || !oneSignalInstance) {
-      notifyOutput.textContent = 'The notification service is still loading. Please wait a moment and try again.';
+      notifyOutput.textContent = oneSignalInitStarted
+        ? 'OneSignal is still initializing. Please wait for the setup error message to appear.'
+        : 'The OneSignal browser SDK has not started. This is a site setup issue, not something you need to fix in your browser.';
       return;
     }
     try {
