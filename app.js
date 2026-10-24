@@ -199,8 +199,8 @@ if (notifyButton && notifyOutput) {
     try {
       await OneSignal.init({
         appId: 'bba33bf0-eead-466f-90ab-ff4304e17a84',
-        serviceWorkerPath: '/blanchett-exposed-app/onesignal/OneSignalSDKWorker.js',
-        serviceWorkerParam: { scope: '/blanchett-exposed-app/onesignal/' }
+        serviceWorkerPath: '/blanchett-exposed-app/sw.js',
+        serviceWorkerParam: { scope: '/blanchett-exposed-app/' }
       });
       oneSignalInstance = OneSignal;
       oneSignalReady = true;
@@ -229,7 +229,7 @@ if (notifyButton && notifyOutput) {
     try {
       await oneSignalInstance.Notifications.requestPermission();
       notifyOutput.textContent = oneSignalInstance.Notifications.permission
-        ? 'Notifications are enabled for this device. Automatic new-article alerts still need to be connected.'
+        ? 'Notifications are enabled for this device. We will test automatic article alerts once the OneSignal setup is complete.'
         : 'Notifications were not enabled. You can allow them in your browser settings and try again.';
     } catch (error) {
       console.error('Could not request notification permission:', error);
