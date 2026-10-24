@@ -231,8 +231,12 @@ if (notifyButton && notifyOutput) {
   notifyButton.addEventListener('click', async () => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-      notifyOutput.textContent = 'This browser does not support web push here. You can still read the blog on WordPress.';
+    const missingPushFeatures = [];
+    if (!('Notification' in window)) missingPushFeatures.push('Notification API');
+    if (!('serviceWorker' in navigator)) missingPushFeatures.push('Service Worker API');
+    if (!('PushManager' in window)) missingPushFeatures.push('Push API');
+    if (missingPushFeatures.length) {
+      notifyOutput.textContent = 'Web push support check: missing ' + missingPushFeatures.join(', ') + '. Browser: ' + navigator.userAgent + '. Please open this site directly in Google Chrome, not inside another app.';
       return;
     }
     if (isIOS && !isInstalled) {
