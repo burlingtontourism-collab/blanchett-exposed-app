@@ -2,7 +2,7 @@ name: Notify subscribers about new WordPress articles
 
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       test_notification:
