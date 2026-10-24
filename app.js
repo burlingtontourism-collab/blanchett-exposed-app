@@ -202,7 +202,7 @@ if (notifyButton && notifyOutput) {
     try {
       await OneSignal.init({
         appId: '326ce20f-b4a3-47fb-8b80-dc878f7a3fd9',
-        serviceWorkerPath: 'blanchett-exposed-app/onesignal/OneSignalSDKWorker.js',
+        serviceWorkerPath: '/blanchett-exposed-app/onesignal/OneSignalSDKWorker.js',
         serviceWorkerParam: { scope: '/blanchett-exposed-app/onesignal/' }
       });
       oneSignalInstance = OneSignal;
