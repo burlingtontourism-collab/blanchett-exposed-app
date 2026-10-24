@@ -4,12 +4,6 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
-    inputs:
-      test_notification:
-        description: "Send a test push notification to subscribed devices"
-        required: true
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -28,7 +22,7 @@ jobs:
       - name: Check WordPress feed and notify subscribers
         env:
           ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
-          TEST_NOTIFICATION: ${{ github.event_name == 'workflow_dispatch' && inputs.test_notification == true }}
+          TEST_NOTIFICATION: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           python - <<'PY'
           import json, os, pathlib, urllib.request, urllib.error, subprocess, sys
