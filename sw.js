@@ -1,4 +1,6 @@
-const CACHE='be-pwa-v14';
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+
+const CACHE='be-pwa-v15';
 const FILES=['./','./index.html','./styles.css','./app.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
 
 self.addEventListener('install', event => {
@@ -61,25 +63,6 @@ self.addEventListener('fetch', event => {
         )
       )
     )
-  );
-});
-
-self.addEventListener('push', event => {
-  let data = {
-    title: 'Blanchett Exposed',
-    body: 'A new investigation has been published.',
-    url: 'https://blanchetexposed.wordpress.com/'
-  };
-  try {
-    data = { ...data, ...(event.data ? event.data.json() : {}) };
-  } catch {}
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: './icons/icon-192.png',
-      badge: './icons/icon-192.png',
-      data: { url: data.url }
-    })
   );
 });
 
