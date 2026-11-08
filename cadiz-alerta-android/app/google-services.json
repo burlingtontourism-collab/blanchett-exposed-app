@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "926832707027",
+    "project_id": "cadiz-alerta",
+    "storage_bucket": "cadiz-alerta.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:926832707027:android:3c25c1c57bd558b870db26",
+        "android_client_info": {
+          "package_name": "es.cadizalerta.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9UZu-y8rhUgT4pi8G_qPN4cHR8iKqGsQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
