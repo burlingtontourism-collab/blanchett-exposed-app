@@ -29,3 +29,6 @@ La actualización cada cinco minutos de la pantalla funciona mientras la app est
 - Open-Meteo: https://open-meteo.com/en/docs
 - AEMET OpenData: https://opendata.aemet.es/
 - Firebase Cloud Messaging: https://firebase.google.com/docs/cloud-messaging
+
+
+Build trigger: workflow execution requested after initial scaffold commit.
