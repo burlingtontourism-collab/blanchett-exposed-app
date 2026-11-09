@@ -32,16 +32,16 @@ if (!feed.ok) throw new Error(`AEMET CAP feed failed: ${feed.status}`);
 const xml = await feed.text();
 
 function textOf(block, name) {
-  const m = block.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, "i"));
-  return m ? m[1].replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, "$1").replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim() : "";
+  const m = block.match(new RegExp(`<${name}(?:\s[^>]*)?>([\s\S]*?)</${name}>`, "i"));
+  return m ? m[1].replace(/<!\\[CDATA\\[([\s\S]*?)\\]\\]>/g, "$1").replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim() : "";
 }
 
-const alerts = xml.match(/<alert(?:\\s[^>]*)?>[\\s\\S]*?<\\/alert>/gi) ?? [];
+const alerts = xml.match(/<alert(?:\s[^>]*)?>[\s\S]*?<\/alert>/gi) ?? [];
 for (const alert of alerts) {
   const identifier = textOf(alert, "identifier");
   const status = textOf(alert, "status").toLowerCase();
   const msgType = textOf(alert, "msgType").toLowerCase();
-  const info = alert.match(/<info(?:\\s[^>]*)?>[\\s\\S]*?<\\/info>/i)?.[0] ?? alert;
+  const info = alert.match(/<info(?:\s[^>]*)?>[\s\S]*?<\/info>/i)?.[0] ?? alert;
   const area = textOf(info, "areaDesc");
   if (!identifier || status !== "actual" || msgType === "cancel" || !/(c[aá]diz|gaditan|estrecho)/i.test(area)) continue;
 
