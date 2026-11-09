@@ -1,0 +1,35 @@
+name: Cádiz Alerta — AEMET push
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cadiz-alerta-aemet
+  cancel-in-progress: false
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    defaults:
+      run:
+        working-directory: cadiz-alerta-android/monitor
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cadiz-alerta-android
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: cadiz-alerta-android/monitor/package.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check monitor script
+        run: node --check monitor.js
+      - name: Check AEMET and send FCM alerts
+        env:
+          AEMET_API_KEY: ${{ secrets.AEMET_API_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node monitor.js
