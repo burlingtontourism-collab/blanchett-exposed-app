@@ -1,0 +1,7 @@
+{
+  "name": "cadiz-alerta-monitor",
+  "private": true,
+  "type": "module",
+  "scripts": { "check": "node --check monitor.js", "run": "node monitor.js" },
+  "dependencies": { "google-auth-library": "^9.15.0" }
+}
