@@ -1,4 +1,5 @@
 import { GoogleAuth } from "google-auth-library";
+import { readFile, writeFile } from "node:fs/promises";
 
 const AEMET_KEY = process.env.AEMET_API_KEY;
 const SERVICE_ACCOUNT = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -39,7 +40,7 @@ for (const alert of alerts) {
   const msgType = textOf(alert, "msgType").toLowerCase();
   const info = alert.match(/<info(?:\s[^>]*)?>[\s\S]*?<\/info>/i)?.[0] ?? alert;
   const area = textOf(info, "areaDesc");
-  if (!identifier || status !== "actual" || msgType === "cancel" || !/(c[aá]diz|gaditan|estrecho)/i.test(area)) continue;
+  if (!identifier || status !== "actual" || msgType === "cancel" || !/(c[aá]diz|gaditan|estrecho)/i.test(area) || sentIds.has(identifier)) continue;
 
   // FCM topic messages do not provide deduplication. GitHub Actions concurrency plus
   // a persistent repository artifact is deliberately not assumed; use CAP identifier
@@ -70,6 +71,6 @@ for (const alert of alerts) {
     if (sent.status === 409 || /already exists/i.test(detail)) continue;
     throw new Error(`FCM send failed (${sent.status}): ${detail}`);
   }
-  console.log(`Sent ${identifier} · ${event} · ${area}`);
+  sentIds.add(identifier);\n  await writeFile("sent-alerts.json", JSON.stringify([...sentIds]));\n  console.log(`Sent ${identifier} · ${event} · ${area}`);
 }
 console.log(`Finished: inspected ${alerts.length} CAP bulletins`);
