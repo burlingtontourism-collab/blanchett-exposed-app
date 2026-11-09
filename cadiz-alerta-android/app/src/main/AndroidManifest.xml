@@ -2,6 +2,9 @@
  <uses-permission android:name="android.permission.INTERNET"/>
  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
  <application android:allowBackup="true" android:label="Cádiz Alerta" android:icon="@drawable/ic_launcher" android:roundIcon="@drawable/ic_launcher" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:usesCleartextTraffic="false">
+  <service android:name=".CadizAlertMessagingService" android:exported="false">
+   <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT"/></intent-filter>
+  </service>
   <activity android:name=".MainActivity" android:exported="true">
    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
   </activity>
