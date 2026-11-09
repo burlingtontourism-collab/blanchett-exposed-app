@@ -39,6 +39,9 @@ export const monitorAemetCadiz = onSchedule(
       const headline = tag(info, "headline") || event;
       const description = tag(info, "description") || "Consulta el aviso oficial de AEMET.";
       const areaDesc = tag(info, "areaDesc");
+      // The AEMET endpoint returns all Andalusian provinces. Only forward CAP
+      // bulletins whose affected-area description explicitly identifies Cádiz.
+      if (!/c[aá]diz|gaditan|estrecho/i.test(areaDesc)) continue;
       const severity = tag(info, "severity");
       const expires = tag(info, "expires");
       const doc = db.collection("sentAemetAlerts").doc(identifier);
