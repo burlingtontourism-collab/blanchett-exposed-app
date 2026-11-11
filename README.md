@@ -1,35 +1,36 @@
-# Blanchett Exposed — PWA starter
+# Blanchett Exposed — mobile reader
 
-A first installable-web-app prototype for Android and iPhone. It has an editorial design, loads recent public posts from the WordPress.com REST API, includes a web app manifest and service worker, and contains a push-event handler.
+The repository hosts the installable mobile reader at:
 
-## Important: push notifications are NOT active yet
-This static prototype cannot register subscriptions or send real push notifications until a push backend is configured. Real web push needs:
-1. HTTPS hosting.
-2. A VAPID key pair.
-3. A server endpoint to receive/store reader subscriptions.
-4. Server-side code that encrypts and sends push messages.
-5. An automation that detects new WordPress posts and triggers the sender.
+- https://burlingtontourism-collab.github.io/blanchett-exposed-app/
+- Installation guide: https://burlingtontourism-collab.github.io/blanchett-exposed-app/install.html
 
-Never put a VAPID private key or service secret in `app.js`.
+The reader is a Progressive Web App (PWA), installed from Chrome on Android or Safari on iPhone. It is not a native APK or an App Store / Google Play listing.
 
-## WordPress.com compatibility
-WordPress.com Free restricts third-party plugins and custom JavaScript. This app is designed to be hosted separately on a free static HTTPS host and linked from the blog. The original articles remain on WordPress.com.
+## Current website integration
 
-## Article feed
-The app reads:
-`https://blanchetexposed.wordpress.com/wp-json/wp/v2/posts?per_page=9&_fields=date,link,title,excerpt`
+The reader now loads its published catalogue from the new Blanchett Exposed website repository:
 
-If the API request is blocked or unavailable, the app still links readers to the main blog.
+- Public catalogue source: `public/articles/index.json`
+- Article pages: `https://blanchett-exposed.pages.dev/articles/<slug>/`
+- Images: served from the new website's `/assets/images/` paths
 
-## Free static hosting
-One possible route is GitHub Pages:
-1. Create a repository and upload all files from this folder.
-2. In repository Settings → Pages, enable deployment from the `main` branch and root folder.
-3. Open the generated HTTPS URL on a phone.
-4. Android users can choose Install/Add to Home Screen. On iPhone, open in Safari and choose Share → Add to Home Screen.
+It does not use WordPress as its article feed or send readers to the former WordPress site.
 
-## iPhone push requirements
-Web push on iPhone/iPad requires iOS/iPadOS 16.4 or later and the app added to the Home Screen. Readers must explicitly grant permission. The server side must also be configured before any push alert will be delivered.
+The root repository for the publication is `burlingtontourism-collab/blanchett-exposed`. If that website changes its catalogue format, update and test `app.js` accordingly.
+
+## Installation and QR
+
+Keep `install.html` at its existing URL. The QR code on the new magazine website points to this address; changing it would break printed or saved QR codes.
+
+The PWA icons use the black-and-gold BE monogram from the new website's favicon. The manifest and service worker must be updated together when app assets change.
+
+## Notifications
+
+OneSignal browser push is configured in `app.js` and uses the worker files in `onesignal/`. The scheduled GitHub Actions workflow checks the new website's public article catalogue and sends alerts that link to the new website. The repository secret `ONESIGNAL_REST_API_KEY` is required for sending.
+
+A successful browser subscription does not by itself prove delivery; test an actual device notification from OneSignal before announcing push alerts as fully operational.
 
 ## Privacy
-This prototype does not store email addresses or notification subscriptions. Add a clear privacy notice if push is enabled later.
+
+The reader does not request a reader's identity or email address. Push notifications are optional and require explicit browser permission.

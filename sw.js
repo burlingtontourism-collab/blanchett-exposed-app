@@ -1,5 +1,14 @@
-const CACHE='be-pwa-v20';
-const FILES=['./','./index.html','./styles.css','./app.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE = 'be-pwa-v21';
+const FILES = [
+  './',
+  './index.html',
+  './styles.css',
+  './app.js',
+  './manifest.webmanifest',
+  './icons/favicon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -20,13 +29,10 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
-
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  // Always check the network first for the app shell so installed copies
-  // don't keep serving old HTML, JavaScript, or CSS indefinitely.
   const isAppShell = request.mode === 'navigate' ||
-    /\.(html|js|css|webmanifest)$/.test(url.pathname);
+    /\.(html|js|css|webmanifest|svg)$/.test(url.pathname);
 
   if (isAppShell) {
     event.respondWith(
@@ -66,7 +72,7 @@ self.addEventListener('fetch', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || 'https://blanchetexposed.wordpress.com/';
+  const url = event.notification.data?.url || 'https://blanchett-exposed.pages.dev/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {

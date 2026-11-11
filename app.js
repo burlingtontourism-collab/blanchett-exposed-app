@@ -1,6 +1,7 @@
 const PAGE_SIZE = 9;
-const WORDPRESS_API = 'https://public-api.wordpress.com/rest/v1.1/sites/blanchetexposed.wordpress.com/posts/';
-const WP_REST_API = 'https://blanchetexposed.wordpress.com/wp-json/wp/v2/posts';
+const SITE_URL = 'https://blanchett-exposed.pages.dev';
+const FEED_URL = SITE_URL + '/articles/index.json';
+
 const articles = document.querySelector('#articles');
 const status = document.querySelector('#status');
 const loadMoreButton = document.querySelector('#loadMore');
@@ -8,53 +9,76 @@ const archiveStatus = document.querySelector('#archiveStatus');
 const searchForm = document.querySelector('#articleSearch');
 const searchInput = document.querySelector('#searchInput');
 const clearSearchButton = document.querySelector('#clearSearch');
-const BLOG_URL = 'https://blanchetexposed.wordpress.com/';
-let currentPage = 1;
-let loading = false;
-let finished = false;
+
+let allArticles = [];
+let visibleArticles = [];
+let currentPage = 0;
 let activeQuery = '';
-let seenLinks = new Set();
+let loading = false;
 
-const plain = (value) => {
-  const doc = new DOMParser().parseFromString(value || '', 'text/html');
-  return (doc.body.textContent || '').replace(/\\s+/g, ' ').trim();
-};
+function plain(value) {
+  const doc = new DOMParser().parseFromString(String(value || ''), 'text/html');
+  return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+}
 
-function normalizePost(post) {
+function safeHttpUrl(value, base = SITE_URL) {
+  if (!value) return '';
+  try {
+    const url = new URL(value, base);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
+function normalizeArticle(record) {
+  if (!record || typeof record !== 'object') return null;
+  const slug = String(record.slug || '').trim();
+  if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return null;
+
+  const title = plain(record.title);
+  if (!title) return null;
+
+  const section = plain(record.section || 'Investigations');
+  const excerpt = plain(record.excerpt);
+  const image = safeHttpUrl(record.image || '');
+  const tags = Array.isArray(record.topic_tags) ? record.topic_tags.map(plain).filter(Boolean) : [];
+
   return {
-    date: post.date,
-    link: post.link || post.URL,
-    title: typeof post.title === 'string' ? post.title : post.title?.rendered,
-    excerpt: typeof post.excerpt === 'string' ? post.excerpt : post.excerpt?.rendered
+    slug,
+    title,
+    section,
+    excerpt,
+    date: String(record.date || ''),
+    image,
+    imageAlt: plain(record.image_alt || title),
+    tags,
+    link: SITE_URL + '/articles/' + encodeURIComponent(slug) + '/'
   };
 }
 
-async function fetchPage(page, query = '') {
-  const search = query ? '&search=' + encodeURIComponent(query) : '';
-  const endpoints = [
-    WORDPRESS_API + '?number=' + PAGE_SIZE + '&page=' + page + search,
-    WP_REST_API + '?per_page=' + PAGE_SIZE + '&page=' + page + '&_fields=date,link,title,excerpt' +
-      (query ? '&search=' + encodeURIComponent(query) : '')
-  ];
-  const errors = [];
-  for (const endpoint of endpoints) {
-    try {
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const data = await response.json();
-      const records = Array.isArray(data) ? data : data.posts;
-      if (!Array.isArray(records)) throw new Error('Unexpected response format');
-      return records.map(normalizePost).filter(post => post.title && post.link);
-    } catch (error) {
-      errors.push(error.message || String(error));
-      console.warn('WordPress archive endpoint failed:', endpoint, error);
-    }
-  }
-  throw new Error(errors.join('; ') || 'No WordPress archive endpoint responded');
+async function fetchArchive() {
+  const response = await fetch(FEED_URL, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    cache: 'no-store'
+  });
+  if (!response.ok) throw new Error('The public website catalogue returned HTTP ' + response.status);
+  const data = await response.json();
+  if (!Array.isArray(data)) throw new Error('Unexpected public catalogue format');
+  return data;
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  const parsed = new Date(value + 'T12:00:00Z');
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(parsed);
 }
 
 function makeCard(post) {
@@ -64,86 +88,118 @@ function makeCard(post) {
   article.target = '_blank';
   article.rel = 'noopener noreferrer';
 
-  const date = document.createElement('span');
-  date.className = 'date';
-  if (post.date) {
-    const parsedDate = new Date(post.date);
-    date.textContent = Number.isNaN(parsedDate.getTime()) ? '' :
-      new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(parsedDate);
+  if (post.image) {
+    const imageWrap = document.createElement('div');
+    imageWrap.className = 'article-image-wrap';
+    const image = document.createElement('img');
+    image.className = 'article-image';
+    image.src = post.image;
+    image.alt = post.imageAlt;
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.addEventListener('error', () => imageWrap.remove(), { once: true });
+    imageWrap.append(image);
+    article.append(imageWrap);
   }
+
+  const copy = document.createElement('div');
+  copy.className = 'article-copy';
+
+  const meta = document.createElement('span');
+  meta.className = 'date';
+  const date = formatDate(post.date);
+  meta.textContent = date ? post.section + ' · ' + date : post.section;
+
   const heading = document.createElement('h3');
-  heading.textContent = plain(post.title);
+  heading.textContent = post.title;
+
   const excerpt = document.createElement('p');
   excerpt.className = 'excerpt';
-  excerpt.textContent = plain(post.excerpt).slice(0, 150);
+  excerpt.textContent = post.excerpt;
+
   const read = document.createElement('span');
   read.className = 'read';
   read.textContent = 'Read investigation ↗';
-  article.append(date, heading, excerpt, read);
+
+  copy.append(meta, heading, excerpt, read);
+  article.append(copy);
   return article;
 }
 
 function updateArchiveControls() {
   if (!loadMoreButton) return;
-  loadMoreButton.hidden = finished;
+  const hasMore = currentPage * PAGE_SIZE < visibleArticles.length;
+  loadMoreButton.hidden = !hasMore;
   loadMoreButton.disabled = loading;
-  loadMoreButton.textContent = loading ? 'Loading…' :
-    (activeQuery ? 'Load more search results' : 'Load older investigations');
+  loadMoreButton.textContent = loading ? 'Loading…' : 'Load older investigations';
   if (clearSearchButton) clearSearchButton.hidden = !activeQuery;
 }
 
-async function loadPage(page, append = false) {
-  if (loading || (finished && append)) return;
+function renderNextPage(reset = false) {
+  if (!articles) return;
+  if (reset) {
+    currentPage = 0;
+    articles.replaceChildren();
+  }
+
+  const start = currentPage * PAGE_SIZE;
+  const page = visibleArticles.slice(start, start + PAGE_SIZE);
+  articles.append(...page.map(makeCard));
+  currentPage += 1;
+
+  if (!visibleArticles.length) {
+    status.textContent = activeQuery
+      ? 'No published investigations match “' + activeQuery + '”. Try another keyword.'
+      : 'The published archive is temporarily unavailable.';
+  } else {
+    status.textContent = activeQuery
+      ? 'Search results for “' + activeQuery + '”.'
+      : 'Showing the latest published investigations.';
+  }
+
+  const shown = Math.min(currentPage * PAGE_SIZE, visibleArticles.length);
+  archiveStatus.textContent = visibleArticles.length
+    ? 'Showing ' + shown + ' of ' + visibleArticles.length + ' investigations.'
+    : '';
+
+  updateArchiveControls();
+}
+
+function applySearch() {
+  const query = activeQuery.toLocaleLowerCase();
+  visibleArticles = query
+    ? allArticles.filter(article => [
+        article.title, article.section, article.excerpt, ...article.tags
+      ].join(' ').toLocaleLowerCase().includes(query))
+    : allArticles.slice();
+
+  renderNextPage(true);
+}
+
+async function start() {
+  if (!articles || !status) return;
   loading = true;
   updateArchiveControls();
-  if (archiveStatus) archiveStatus.textContent = append
-    ? (activeQuery ? 'Loading more search results…' : 'Loading older investigations…')
-    : '';
-  if (!append) status.textContent = activeQuery
-    ? 'Searching the published archive…'
-    : 'Loading recent articles…';
+  status.textContent = 'Loading published investigations from the new website…';
 
   try {
-    const posts = await fetchPage(page, activeQuery);
-    const freshPosts = posts.filter(post => !seenLinks.has(post.link));
-    freshPosts.forEach(post => seenLinks.add(post.link));
-    if (!append) articles.replaceChildren();
-    articles.append(...freshPosts.map(makeCard));
-    currentPage = page;
-
-    if (!freshPosts.length && !append) {
-      status.textContent = activeQuery
-        ? 'No articles found for “' + activeQuery + '”. Try another keyword.'
-        : 'No articles are available right now.';
-    } else if (activeQuery) {
-      status.textContent = 'Search results for “' + activeQuery + '”.';
-    } else {
-      status.textContent = 'Recent posts from Blanchett Exposed.';
-    }
-
-    finished = posts.length < PAGE_SIZE || (append && freshPosts.length === 0);
-    if (finished && archiveStatus) {
-      archiveStatus.textContent = activeQuery
-        ? 'You’ve reached the end of these search results.'
-        : 'You’re viewing all posts available through the public feed.';
-    } else if (archiveStatus) {
-      archiveStatus.textContent = '';
-    }
+    const records = await fetchArchive();
+    allArticles = records.map(normalizeArticle).filter(Boolean);
+    allArticles.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    if (!allArticles.length) throw new Error('The public article catalogue is empty.');
+    applySearch();
   } catch (error) {
-    console.error('Could not load WordPress archive:', error);
-    if (!append) {
-      status.replaceChildren(document.createTextNode(
-        activeQuery ? 'Search is temporarily unavailable. ' : 'Recent articles could not load automatically. '
-      ));
-      const link = document.createElement('a');
-      link.href = BLOG_URL;
-      link.textContent = 'Open Blanchett Exposed on WordPress';
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      status.append(link);
-    } else if (archiveStatus) {
-      archiveStatus.textContent = 'Could not load more posts just now. Please try again.';
-    }
+    console.error('Could not load the new Blanchett Exposed archive:', error);
+    status.replaceChildren(document.createTextNode(
+      'The new website archive could not be loaded automatically. '
+    ));
+    const link = document.createElement('a');
+    link.href = SITE_URL + '/articles/';
+    link.textContent = 'Open the complete Blanchett Exposed archive';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    status.append(link);
+    archiveStatus.textContent = 'The reader is still available; use the website archive link above.';
   } finally {
     loading = false;
     updateArchiveControls();
@@ -151,126 +207,128 @@ async function loadPage(page, append = false) {
 }
 
 function startSearch(query) {
-  activeQuery = query.trim();
-  currentPage = 1;
-  finished = false;
-  seenLinks = new Set();
-  if (archiveStatus) archiveStatus.textContent = '';
-  updateArchiveControls();
-  loadPage(1, false);
-  document.querySelector('#articles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  activeQuery = String(query || '').trim();
+  applySearch();
 }
 
 if (searchForm) {
   searchForm.addEventListener('submit', event => {
     event.preventDefault();
-    startSearch(searchInput.value);
+    startSearch(searchInput ? searchInput.value : '');
+    articles?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }
+
 if (clearSearchButton) {
   clearSearchButton.addEventListener('click', () => {
-    searchInput.value = '';
+    if (searchInput) searchInput.value = '';
     startSearch('');
-    searchInput.focus();
+    searchInput?.focus();
   });
 }
-if (loadMoreButton) loadMoreButton.addEventListener('click', () => loadPage(currentPage + 1, true));
-loadPage(1, false);
+
+if (loadMoreButton) {
+  loadMoreButton.addEventListener('click', () => {
+    if (!loading && currentPage * PAGE_SIZE < visibleArticles.length) renderNextPage(false);
+  });
+}
 
 const dismissButton = document.querySelector('#dismiss');
-if (dismissButton) dismissButton.addEventListener('click', () => {
-  const installHelp = document.querySelector('#installHelp');
-  if (installHelp) installHelp.hidden = true;
-});
+if (dismissButton) {
+  dismissButton.addEventListener('click', () => {
+    const installHelp = document.querySelector('#installHelp');
+    if (installHelp) installHelp.hidden = true;
+  });
+}
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.warn));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(error => {
+      console.warn('Reader offline support could not be registered:', error);
+    });
+  });
 }
 
 const notifyButton = document.querySelector('#notify');
 const notifyOutput = document.querySelector('#notifyStatus');
+const ONE_SIGNAL_APP_ID = '326ce20f-b4a3-47fb-8b80-dc878f7a3fd9';
 let oneSignalReady = false;
 let oneSignalInstance = null;
 let oneSignalInitError = null;
 let oneSignalInitStarted = false;
 
 if (notifyButton && notifyOutput) {
-  notifyButton.textContent = 'Enable notifications';
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.OneSignalDeferred.push(async function (OneSignal) {
     oneSignalInitStarted = true;
     try {
       await OneSignal.init({
-        appId: '326ce20f-b4a3-47fb-8b80-dc878f7a3fd9',
+        appId: ONE_SIGNAL_APP_ID,
         serviceWorkerPath: '/blanchett-exposed-app/onesignal/OneSignalSDKWorker.js',
         serviceWorkerParam: { scope: '/blanchett-exposed-app/onesignal/' }
       });
       oneSignalInstance = OneSignal;
       oneSignalReady = true;
-      notifyOutput.textContent = 'Ready to enable push notifications on this device.';
+      notifyOutput.textContent = 'Ready. You can enable notifications for this device.';
     } catch (error) {
       console.error('OneSignal initialization failed:', error);
-      const detail = error && (error.message || String(error));
-      oneSignalInitError = detail || 'No error details were provided.';
-      notifyOutput.textContent = 'Notification setup error: ' + oneSignalInitError + ' Please send this message to the site maintainer.';
+      oneSignalInitError = error && (error.message || String(error))
+        ? (error.message || String(error))
+        : 'The notification service could not initialize.';
+      notifyOutput.textContent = 'Notifications are unavailable on this device right now. The reader and article archive remain available.';
     }
   });
 
-  // If the external OneSignal SDK never calls the queued initializer, expose
-  // that condition instead of leaving the page stuck on "still loading".
   window.setTimeout(() => {
     if (!oneSignalReady && !oneSignalInitError && !oneSignalInitStarted) {
-      oneSignalInitError = 'The OneSignal browser SDK did not start. The script may be blocked or the site configuration may be incompatible.';
-      notifyOutput.textContent = 'Notification setup error: ' + oneSignalInitError;
+      oneSignalInitError = 'The OneSignal browser SDK did not start.';
+      notifyOutput.textContent = 'Notifications are not ready yet. Please use the reader as usual.';
     } else if (!oneSignalReady && !oneSignalInitError && oneSignalInitStarted) {
-      oneSignalInitError = 'OneSignal initialization did not finish within 15 seconds. The service worker or site configuration may be failing.';
-      notifyOutput.textContent = 'Notification setup error: ' + oneSignalInitError;
+      oneSignalInitError = 'OneSignal initialization timed out.';
+      notifyOutput.textContent = 'Notifications are not ready yet. Please use the reader as usual.';
     }
   }, 15000);
 
   notifyButton.addEventListener('click', async () => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-    const missingPushFeatures = [];
-    if (!('Notification' in window)) missingPushFeatures.push('Notification API');
-    if (!('serviceWorker' in navigator)) missingPushFeatures.push('Service Worker API');
-    if (!('PushManager' in window)) missingPushFeatures.push('Push API');
-    if (missingPushFeatures.length) {
-      notifyOutput.textContent = 'Web push support check: missing ' + missingPushFeatures.join(', ') + '. Browser: ' + navigator.userAgent + '. Please open this site directly in Google Chrome, not inside another app.';
+    const missing = [];
+    if (!('Notification' in window)) missing.push('Notification API');
+    if (!('serviceWorker' in navigator)) missing.push('Service Worker API');
+    if (!('PushManager' in window)) missing.push('Push API');
+
+    if (missing.length) {
+      notifyOutput.textContent = 'This browser does not support web push (' + missing.join(', ') + ').';
       return;
     }
     if (isIOS && !isInstalled) {
-      notifyOutput.textContent = 'On iPhone, first open this site in Safari and choose Share → Add to Home Screen. Then open the installed app.';
+      notifyOutput.textContent = 'On iPhone, first open this page in Safari and choose Share → Add to Home Screen. Then open the installed reader.';
       return;
     }
-    if (oneSignalInitError) {
-      notifyOutput.textContent = 'Notification setup error: ' + oneSignalInitError;
+    if (oneSignalInitError || !oneSignalReady || !oneSignalInstance) {
+      notifyOutput.textContent = 'Notifications are not connected yet. You can continue reading the full archive here.';
       return;
     }
-    if (!oneSignalReady || !oneSignalInstance) {
-      notifyOutput.textContent = oneSignalInitStarted
-        ? 'OneSignal is still initializing. Please wait for the setup error message to appear.'
-        : 'The OneSignal browser SDK has not started. This is a site setup issue, not something you need to fix in your browser.';
-      return;
-    }
+
+    notifyButton.disabled = true;
     try {
       await oneSignalInstance.Notifications.requestPermission();
       if (!oneSignalInstance.Notifications.permission) {
-        notifyOutput.textContent = 'Browser permission was not granted. Allow notifications for this site in Chrome settings, then try again.';
+        notifyOutput.textContent = 'Browser permission was not granted. You can enable it later in your browser settings.';
         return;
       }
       await oneSignalInstance.User.PushSubscription.optIn();
-      const pushSubscription = oneSignalInstance.User.PushSubscription;
-      const subscriptionId = pushSubscription.id;
-      const optedIn = pushSubscription.optedIn;
-      if (optedIn && subscriptionId) {
-        notifyOutput.textContent = 'This device is subscribed to OneSignal notifications. Subscription ID: ' + subscriptionId + '. Next we need to send a test notification from OneSignal.';
+      const subscription = oneSignalInstance.User.PushSubscription;
+      if (subscription.optedIn && subscription.id) {
+        notifyOutput.textContent = 'This device is subscribed. New article alerts will link to the Blanchett Exposed website.';
       } else {
-        notifyOutput.textContent = 'Chrome permission is granted, but OneSignal has not confirmed a push subscription yet. Status: optedIn=' + String(optedIn) + ', subscription ID=' + String(subscriptionId) + '. Please wait a few seconds and press Enable notifications again.';
+        notifyOutput.textContent = 'Permission was granted, but the notification service has not confirmed this device yet. Try again in a moment.';
       }
     } catch (error) {
-      console.error('Could not subscribe this device to OneSignal:', error);
-      notifyOutput.textContent = 'OneSignal subscription error: ' + (error && (error.message || String(error)) || 'Unknown error') + '. Please send this message to the site maintainer.';
+      console.error('Could not subscribe this device to notifications:', error);
+      notifyOutput.textContent = 'The notification service could not complete setup. The article reader remains available.';
+    } finally {
+      notifyButton.disabled = false;
     }
   });
 }
@@ -289,3 +347,5 @@ if (backToTop) {
     history.replaceState(null, '', window.location.pathname + window.location.search);
   });
 }
+
+start();

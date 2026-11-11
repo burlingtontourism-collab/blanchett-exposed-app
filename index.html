@@ -1,17 +1,79 @@
 <!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#171717"><meta name="description" content="Independent investigations, documents and analysis from Blanchett Exposed.">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/icon-192.png"><link rel="stylesheet" href="./styles.css">
-<title>Blanchett Exposed</title></head><body id="top">
-<header><a class="brand" href="./"><span class="mark">BE</span><span><b>BLANCHETT EXPOSED</b><small>INDEPENDENT INVESTIGATIONS</small></span></a></header>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090909">
+<meta name="description" content="The Blanchett Exposed mobile reader: independent investigations, articles and documentary archives.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="./icons/favicon.svg">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./styles.css">
+<title>Blanchett Exposed — Mobile Reader</title>
+</head>
+<body id="top">
+<header>
+  <a class="brand" href="./" aria-label="Blanchett Exposed mobile reader home">
+    <img class="brand-mark" src="./icons/favicon.svg" alt="">
+    <span><b>BLANCHETT EXPOSED</b><small>INDEPENDENT INVESTIGATIONS · DOCUMENTED SOURCES</small></span>
+  </a>
+</header>
 <main>
-<section class="hero"><p class="eyebrow">DOCUMENTS · CONTEXT · ANALYSIS</p><h1>Beyond the public image.</h1><p class="intro">Investigations into the professional, corporate and institutional world surrounding Cate Blanchett.</p><a class="button" href="#articles">Explore latest investigations ↓</a></section>
-<section class="notice" id="installHelp"><div><b>Keep Blanchett Exposed close</b><p>On iPhone, open this page in Safari, tap Share, then “Add to Home Screen”. On Android, use the browser menu and choose Install app or Add to Home screen.</p></div><button id="dismiss">×</button></section>
-<section class="section-heading"><div><p class="eyebrow">THE ARCHIVE</p><h2><a href="#articles" style="text-decoration:none">Latest investigations</a></h2></div><a href="#articles">View article list ↓</a></section>
-<form id="articleSearch" class="article-search" role="search"><label for="searchInput">Search the investigations archive</label><div class="search-row"><input id="searchInput" name="q" type="search" placeholder="Search a name, company, topic or keyword…" autocomplete="off"><button class="button" type="submit">Search</button><button class="search-clear" id="clearSearch" type="button" hidden>Clear</button></div><p class="search-hint">Search across published articles, not just the latest posts.</p></form><p id="status" role="status">Loading recent articles…</p><section id="articles" class="articles"></section>
-<div class="archive-controls"><button class="button" id="loadMore" type="button">Load older investigations</button><p id="archiveStatus" role="status" aria-live="polite"></p><a class="archive-full-link" href="https://blanchetexposed.wordpress.com/archives/" target="_blank" rel="noopener noreferrer">Browse the complete archive on WordPress ↗</a></div>
-<section class="push"><p class="eyebrow">NEW INVESTIGATIONS</p><h2>Get notified about new work</h2><p>Enable browser notifications for this device. Automatic alerts for each new article will be configured separately.</p><button id="notify" type="button">Enable notifications</button><p id="notifyStatus" role="status" aria-live="polite">Notification setup will load shortly.</p></section>
-</main><footer><b>BLANCHETT EXPOSED</b><a href="https://blanchetexposed.wordpress.com/">blanchetexposed.wordpress.com ↗</a><p>Independent reader app concept. Original articles remain on WordPress.com.</p></footer>
+  <section class="hero">
+    <p class="eyebrow">THE MOBILE READER</p>
+    <h1>Beyond the public image.<br><em>Into the record.</em></h1>
+    <p class="intro">Read the investigations, follow the documents and explore the archive from your phone. This reader is connected to the new Blanchett Exposed website — not the former WordPress publication.</p>
+    <a class="button" href="https://blanchett-exposed.pages.dev/articles/">Browse the website archive ↗</a>
+  </section>
+
+  <section class="notice" id="installHelp">
+    <div>
+      <b>Keep Blanchett Exposed close</b>
+      <p>On Android, open the browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>. On iPhone, open this page in Safari, tap Share, then <strong>Add to Home Screen</strong>.</p>
+    </div>
+    <button id="dismiss" type="button" aria-label="Dismiss installation instructions">×</button>
+  </section>
+
+  <section class="section-heading">
+    <div><p class="eyebrow">THE LATEST INVESTIGATIONS</p><h2>Follow the evidence.</h2></div>
+    <a href="https://blanchett-exposed.pages.dev/articles/">Full archive ↗</a>
+  </section>
+
+  <form id="articleSearch" class="article-search" role="search">
+    <label for="searchInput">Search the Blanchett Exposed archive</label>
+    <div class="search-row">
+      <input id="searchInput" name="q" type="search" placeholder="Search a name, company, topic or keyword…" autocomplete="off">
+      <button class="button" type="submit">Search</button>
+      <button class="search-clear" id="clearSearch" type="button" hidden>Clear</button>
+    </div>
+    <p class="search-hint">Searches published investigations from the new website.</p>
+  </form>
+
+  <p id="status" role="status" aria-live="polite">Loading published investigations…</p>
+  <section id="articles" class="articles" aria-label="Published investigations"></section>
+
+  <div class="archive-controls">
+    <button class="button" id="loadMore" type="button" hidden>Load older investigations</button>
+    <p id="archiveStatus" role="status" aria-live="polite"></p>
+    <a class="archive-full-link" href="https://blanchett-exposed.pages.dev/articles/">Open the complete Blanchett Exposed archive ↗</a>
+  </div>
+
+  <section class="push">
+    <p class="eyebrow">NEW INVESTIGATIONS</p>
+    <h2>Get notified about new work</h2>
+    <p>Enable optional browser notifications on this device. Alerts, when available, will open the new Blanchett Exposed website.</p>
+    <button id="notify" type="button">Enable notifications</button>
+    <p id="notifyStatus" role="status" aria-live="polite">Notification setup will load shortly.</p>
+  </section>
+</main>
+<footer>
+  <a class="footer-brand" href="https://blanchett-exposed.pages.dev/"><img src="./icons/favicon.svg" alt=""><span>BLANCHETT EXPOSED</span></a>
+  <a href="https://blanchett-exposed.pages.dev/articles/">Read on the website ↗</a>
+  <p>Independent research. Documented sources. Clear distinctions between fact, allegation and analysis.</p>
+</footer>
 <a class="back-to-top" id="backToTop" href="#top" aria-label="Back to top" title="Back to top">↑</a>
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script><script src="./app.js?v=onesignal-path-fix-2"></script></body></html>
+<script>window.OneSignalDeferred = window.OneSignalDeferred || [];</script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script src="./app.js?v=be-mobile-20261111-1" defer></script>
+</body>
+</html>
