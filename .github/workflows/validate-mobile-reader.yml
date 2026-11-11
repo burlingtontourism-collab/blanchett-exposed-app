@@ -63,7 +63,7 @@ jobs:
           assert 'navigator.serviceWorker.register("./sw.js")' in app or "navigator.serviceWorker.register('./sw.js')" in app
           assert "be-pwa-v21" in worker
           assert "https://blanchett-exposed.pages.dev" in app
-          assert "public/articles/index.json" in app
+          assert "/articles/index.json" in app
           assert "https://blanchett-exposed.pages.dev/articles/index.json" in workflow
           assert "blanchett-exposed.pages.dev/articles/" in workflow
           assert "blanchett-exposed.wordpress.com" not in html + app + worker + install + workflow
