@@ -29,7 +29,7 @@ jobs:
           from datetime import datetime
 
           state_path = pathlib.Path("automation/latest-post.json")
-          feed_url = "https://raw.githubusercontent.com/burlingtontourism-collab/blanchett-exposed/main/public/articles/index.json"
+          feed_url = "https://blanchett-exposed.pages.dev/articles/index.json"
           request = urllib.request.Request(feed_url, headers={"User-Agent": "BlanchettExposedMobileReader/2.0"})
           try:
               with urllib.request.urlopen(request, timeout=25) as response:
