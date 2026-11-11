@@ -1,4 +1,4 @@
-const CACHE = 'be-pwa-v22';
+const CACHE = 'be-pwa-v23';
 const FILES = [
   './',
   './index.html',
