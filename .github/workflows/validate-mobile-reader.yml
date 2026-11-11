@@ -1,0 +1,76 @@
+name: Validate Blanchett Exposed mobile reader
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "app.js"
+      - "styles.css"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - "install.html"
+      - "icons/**"
+      - "onesignal/**"
+      - ".github/workflows/validate-mobile-reader.yml"
+      - ".github/workflows/notify-new-post.yml"
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "app.js"
+      - "styles.css"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - "install.html"
+      - "icons/**"
+      - "onesignal/**"
+      - ".github/workflows/validate-mobile-reader.yml"
+      - ".github/workflows/notify-new-post.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate JavaScript syntax
+        run: node --check app.js
+
+      - name: Validate PWA files and new website integration
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path(".")
+          manifest = json.loads((root / "manifest.webmanifest").read_text())
+          assert manifest["name"] == "Blanchett Exposed"
+          assert manifest["display"] == "standalone"
+          assert manifest["theme_color"] == "#090909"
+
+          html = (root / "index.html").read_text()
+          app = (root / "app.js").read_text()
+          worker = (root / "sw.js").read_text()
+          install = (root / "install.html").read_text()
+          workflow = (root / ".github/workflows/notify-new-post.yml").read_text()
+
+          assert 'href="./manifest.webmanifest"' in html
+          assert 'navigator.serviceWorker.register("./sw.js")' in app or "navigator.serviceWorker.register('./sw.js')" in app
+          assert "be-pwa-v21" in worker
+          assert "https://blanchett-exposed.pages.dev" in app
+          assert "public/articles/index.json" in app
+          assert "burlingtontourism-collab/blanchett-exposed/main/public/articles/index.json" in workflow
+          assert "blanchett-exposed.pages.dev/articles/" in workflow
+          assert "blanchett-exposed.wordpress.com" not in html + app + worker + install + workflow
+          assert (root / "icons/favicon.svg").exists()
+          assert (root / "onesignal/OneSignalSDKWorker.js").exists()
+          assert (root / "onesignal/OneSignalSDKUpdaterWorker.js").exists()
+          for icon in manifest["icons"]:
+              assert (root / icon["src"].removeprefix("./")).exists(), icon["src"]
+          print("Mobile reader, PWA manifest, service worker, branding, article feed and OneSignal paths validated.")
+          PY
