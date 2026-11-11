@@ -61,7 +61,7 @@ jobs:
 
           assert 'href="./manifest.webmanifest"' in html
           assert 'navigator.serviceWorker.register("./sw.js")' in app or "navigator.serviceWorker.register('./sw.js')" in app
-          assert "be-pwa-v21" in worker
+          assert "be-pwa-v22" in worker
           assert "https://blanchett-exposed.pages.dev" in app
           assert "/articles/index.json" in app
           assert "https://blanchett-exposed.pages.dev/articles/index.json" in workflow
