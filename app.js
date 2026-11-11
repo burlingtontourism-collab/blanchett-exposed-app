@@ -1,10 +1,6 @@
 const PAGE_SIZE = 9;
 const SITE_URL = 'https://blanchett-exposed.pages.dev';
-const FEED_URLS = [
-  'https://raw.githubusercontent.com/burlingtontourism-collab/blanchett-exposed/main/public/articles/index.json',
-  SITE_URL + '/articles/index.json'
-];
-const GITHUB_API_FEED = 'https://api.github.com/repos/burlingtontourism-collab/blanchett-exposed/contents/public/articles/index.json?ref=main';
+const FEED_URL = SITE_URL + '/articles/index.json';
 
 const articles = document.querySelector('#articles');
 const status = document.querySelector('#status');
@@ -61,44 +57,16 @@ function normalizeArticle(record) {
   };
 }
 
-async function readGithubApiFeed() {
-  const response = await fetch(GITHUB_API_FEED, {
-    headers: { Accept: 'application/vnd.github+json' },
+async function fetchArchive() {
+  const response = await fetch(FEED_URL, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
     cache: 'no-store'
   });
-  if (!response.ok) throw new Error('GitHub archive request returned ' + response.status);
+  if (!response.ok) throw new Error('The public website catalogue returned HTTP ' + response.status);
   const data = await response.json();
-  if (!data.content) throw new Error('GitHub archive response did not contain article data');
-  const binary = atob(data.content.replace(/\s/g, ''));
-  const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
-  return JSON.parse(new TextDecoder().decode(bytes));
-}
-
-async function fetchArchive() {
-  const errors = [];
-  for (const endpoint of FEED_URLS) {
-    try {
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const data = await response.json();
-      if (!Array.isArray(data)) throw new Error('Unexpected archive format');
-      return data;
-    } catch (error) {
-      errors.push(error.message || String(error));
-      console.warn('Archive source unavailable:', endpoint, error);
-    }
-  }
-
-  try {
-    return await readGithubApiFeed();
-  } catch (error) {
-    errors.push(error.message || String(error));
-    throw new Error(errors.join('; ') || 'No archive source responded');
-  }
+  if (!Array.isArray(data)) throw new Error('Unexpected public catalogue format');
+  return data;
 }
 
 function formatDate(value) {
